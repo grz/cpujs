@@ -1,4 +1,4 @@
-<h1>CPUJS 1.0（beta）</h1>  
+<h1>CPUJS 1.0</h1>  
 <p>by GRZ</p>
 
 欢迎使用CPUJS，有任何问题和建议请发邮件到grz@grzcn.com
