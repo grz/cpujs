@@ -5,7 +5,7 @@
 ![任务调度器log](https://raw.github.com/grz/cpujs/blog_pages/blog_pages/readme.files/blog_cover.jpg)
 
 CPUJS的说明文档地址：
-http://grz.github.io/cpujs/
+https://github.com/grz/cpujs/wiki/CPUJS说明文档
 
 CPUJS的任务调度器体验地址：
 http://qzs.qq.com/qzone/v8/engine/test_cpujs.html?cpujs_debugger
