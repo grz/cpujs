@@ -7,7 +7,6 @@ define(['./cpu_monitor_ui'],function(require,exports){
 	 * @author rizenguo  aka  GRZ/郭小帅
 	 * @type 
 	 */
-
 	CPUJS.Monitor.UI = require('./cpu_monitor_ui');
 
 	/**
@@ -39,6 +38,9 @@ define(['./cpu_monitor_ui'],function(require,exports){
 			}
 			return false;
 		},
+		/**
+		 * 从上一个点把线连到一个新的点（x,y）是这个点的坐标
+		 */
 		drawPoint:function(x,y){
 			var p = CPUJS.Monitor.UI,c = p.canvas;
 			var g = c.createLinearGradient(0,0,0,p.PANEL_HEIGHT);
@@ -54,7 +56,10 @@ define(['./cpu_monitor_ui'],function(require,exports){
 			p.LAST_Y = y;
 			c.stroke();
 		},
-		drawline:function(){
+		/**
+		 * 一次性将所有的线给绘制出来，方便实现曲线的平移
+		 */
+		drawLine:function(){
 			var p = CPUJS.Monitor.UI,po;
 			p.canvas.fillRect(0, 0, p.PANEL_WIDTH, p.PANEL_HEIGHT); 
 			for(var i=0,len=p.point_list.length;i<len;i++){
@@ -62,7 +67,11 @@ define(['./cpu_monitor_ui'],function(require,exports){
 				CPUJS.Monitor.UI.Drawer.drawPoint(po[0],po[1]);
 				po[0]-=p.STEP_WIDTH;
 			}
+			CPUJS.Monitor.UI.Mark.move();
 		},
+		/**
+		 * cpu曲线的百分比数字
+		 */
 		PercentNum:{
 			PANEL_WIDTH:50,
 			PANEL_HEIGHT:35,
@@ -87,9 +96,7 @@ define(['./cpu_monitor_ui'],function(require,exports){
 					c.lineJoin = "round";
 					c.fillRect(0, 0, p.PANEL_WIDTH, p.PANEL_HEIGHT);		
 					c.beginPath();
-
 					c.stroke();
-					
 					var fontSize = "40",
 					fontWeight = "normal",
 					fontStyle = "normal",
@@ -98,7 +105,7 @@ define(['./cpu_monitor_ui'],function(require,exports){
 					c.fillStyle = "#ff0000";
 					c.textBaseLine = "middle";
 					c.textAlign = "center";
-					c.fillText("abc",0,0);
+					//c.fillText("abc",0,0);
 					return true;
 				}
 				return false;
@@ -125,8 +132,14 @@ define(['./cpu_monitor_ui'],function(require,exports){
 			}
 		}
 	};
-	CPUJS.Monitor.UI.Drawer.initCanvas();
+
+	CPUJS.Monitor.UI.bootstrap = function(){
+		CPUJS.Monitor.UI.init();
+		CPUJS.Monitor.UI.Drawer.initCanvas();
+	}
+
 	return CPUJS.Monitor.UI;
+	;
 });
 
 

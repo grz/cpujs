@@ -20,7 +20,7 @@ define(function(require,exports){
 		return false;
 	}
 	/**
-	 * log函数，只在CPU_DEBUGGER_TURN_ON的时候才log出来
+	 * log函数，只在cpujs_debugger 或  cpujs.TurnOn.log为true的时候才log出来
 	 */
 	CPUJS.log = function(s){
 		if(!CPUJS.TurnOn.Log){
@@ -28,6 +28,21 @@ define(function(require,exports){
 		}
 		if(window.console&&window.console.log){
 			window.console.log("### CPUJS Log:"+s);
+		}
+	};
+	/**
+	 * mark功能，只在url里附加"cpujs_debugger"启动调试模式才会体现出来
+	 * 用于在cpu曲线上打出一个标志，方便调试问题
+	 * @param {String} label 要显示的文字
+	 * @param {String} color 自定义颜色
+	 * @param {String} detail Mark 的详细信息
+	 */
+	CPUJS.mark = function(label,color,detail){
+		if(CPUJS.TurnOff.MARK){
+			return;
+		}
+		if(CPUJS.Monitor.UI&&"function"==typeof(CPUJS.Monitor.UI.drawMark)){
+			CPUJS.Monitor.UI.drawMark(label,color,detail);
 		}
 	};
 	/**
@@ -39,7 +54,7 @@ define(function(require,exports){
 	 */
 	CPUJS.Config = {
 		TM_MAX_CPU:30,//设置任务调度器尽量不要超过的CPU阀值
-		TM_MISSION_DELAY:5
+		TM_MISSION_DELAY:5//设置单次任务执行时间超过多少ms要被log出来
 	};
 	/**
 	 * CPUJS的开关，用来按需选择打开一些默认不开启的功能
@@ -57,6 +72,7 @@ define(function(require,exports){
 	CPUJS.TurnOff = {
 		TM:false,//是否关闭任务管理器智能调度
 		FastLoad:false,//是否关闭FastLoad
+		MARK:false,//是否关闭Mark功能
 		EnergySave:false//是否关闭节能功能(按需启动Monitor，当不没有服务的时候就暂停运转)
 	};
 	/**
@@ -71,34 +87,43 @@ define(function(require,exports){
 		timerID:null,//定时采集数据的定时器ID
 		lastTime:0,//上一个点的绝对时间
 		currentTime:0,//当前点的绝对时间
-		isPause:true,//是否被暂停
+		isPause:null,//是否被暂停
 		/**
 		 * 初始化
 		 */
 		init:function(){
+			QZONE.console && QZONE.console.log && QZONE.console.log('CPUJS.Monitor.init(): start'); //log
+
 			var p = CPUJS.Monitor;
 			if(p.hasInit){
+				QZONE.console && QZONE.console.log && QZONE.console.log('CPUJS.Monitor.init(): have initialized, return'); //log
 				return;
 			}
 			p.run();//Monitor开始工作
 			p.hasInit = true;
 			p.lastTime = CPUJS.now();
 			if(CPUJS.TurnOn.Monitor){//如果需要UI渲染则拉取UI库
-				var ui = (ua&&ua.ie<9)?'./cpu_monitor_ui_vml':'./cpu_monitor_ui_canvas';
-				require.async(ui,function(m){
+				var ui = (ua && ua.ie < 9) ? './cpu_monitor_ui_vml' : './cpu_monitor_ui_canvas';
+				require.async(ui, function(m){
+					QZONE.console && QZONE.console.log && QZONE.console.log('CPUJS.Monitor.init(): cpujs UI loaded'); //log
+					m.ZOOM = 2;
+					m.PANEL_WIDTH = document.body.clientWidth/2-50;
 					CPUJS.Monitor.UI = m;
+					CPUJS.Monitor.UI.bootstrap();
 				});
 			}
+
+			QZONE.console && QZONE.console.log && QZONE.console.log('CPUJS.Monitor.init(): end'); //log
 		},
 		/**
 		 * 在console打印出cpu曲线
 		 */
 		drawUIByConsole:function(per){
-			var n = Math.round(per*10),s="▆";
-			for(var i=n;i--;){
-				s+="▆";
+			var n = Math.round(per * 10), s="▆";
+			for(var i = n; i--;){
+				s += "▆";
 			}
-			s+=Math.round(per*100);
+			s += Math.round(per * 100);
 			CPUJS.log(s);
 		},
 		/**
@@ -155,7 +180,7 @@ define(function(require,exports){
 		 */
 		resume:function(){
 			var p = CPUJS.Monitor;
-			if(!p.isPause){
+			if(p.isPause!=null&&!p.isPause){
 				return;
 			}
 			//避免长时间的暂停跟真正的卡住搞混，所以每次重启的时候都加上一个0的数值。
@@ -502,9 +527,10 @@ define(function(require,exports){
 				//动态调整单任务cpu参数
 				//更大程度利用cpu资源
 				var freePer = (p.getMaxCPU()/100)-per,c;//剩余资源
-				if(freePer>0){
+				if(freePer>0&&!p.Shooter.lock){
 					c = p.GearBox.getNum();//获取可以同时执行的任务数
-					CPUJS.log("do missions count:"+c);
+					//CPUJS.log("do missions count:"+c);
+					p.Shooter.lock = true;
 					p.Shooter.exec(c);
 				}
 				//如果当前已经没有空余CPU资源了，则本次啥都不做，继续检测
@@ -608,11 +634,56 @@ define(function(require,exports){
 		 * 负责任务处理的模块
 		 */
 		Shooter:{
+			exec1:function(count){
+				var p = CPUJS.TM,fn,a,len,d1,d2,t1,t2,t3,_a=[],d=0,d0 = CPUJS.now();
+				//a = p.Loader.getTask(count);//获取数量为count的一批任务
+				while(d<CPUJS.Config.TM_MAX_CPU){
+					console.log("ddddd:"+d+"    CPUJS.Config.TM_MAX_CPU:"+CPUJS.Config.TM_MAX_CPU);
+					a = p.Loader.getTask(1);
+					fn = a.shift();
+					if(isArray(fn)){
+						_a = fn[1];
+						fn = fn[0];
+					}
+					if("function"==typeof(fn)){
+						
+						/*
+						(function(ar){//这里不使用setTimeout的主要原因是要让几个任务同步执行，才能让cpu曲线即时有变化，才可以更好的做下一步的智能调度决策
+							setTimeout(function(){
+								fn.apply(null,ar);
+								window.__c++;
+								console.log(window.__c);
+							},10);
+						})(_a);
+						*/
+						if(!CPUJS.TurnOn.TryCatch){//调试模式下不走try catch
+							fn.apply(null,_a);
+						}else{
+							try{//try catch如果没捕捉到出错其实基本上没开销；捕捉1000次有出错的才15ms开销
+								fn.apply(null,_a);
+							}catch(e){
+								CPUJS.log(e);
+							}
+						}
+						t2 = CPUJS.now();
+						
+						if(t3>CPUJS.Config.TM_MISSION_DELAY){
+							p.Stat.log(fn.toString(),t3);//记录这个任务的执行时间
+						}
+						d=t2-d0;
+						continue;
+					}
+					d+=30;
+				}
+				setTimeout(function(){
+					CPUJS.TM.Shooter.lock = false;
+				},50);
+			},
 			exec:function(count){
 				var p = CPUJS.TM,fn,a,len,d1,d2,t1,t2,t3,_a=[];
 				a = p.Loader.getTask(count);//获取数量为count的一批任务
 				len = a.length;
-				var d1 = CPUJS.now();
+				d1 = CPUJS.now();
 				while(a.length>0){//优先执行fastQueue里面的关键任务
 					fn = a.shift();
 					if(isArray(fn)){
@@ -653,6 +724,9 @@ define(function(require,exports){
 					cpuPer = Math.max(cpuPer,per);
 					CPUJS.TM.GearBox.adjust(cpuPer);
 				});
+				setTimeout(function(){
+					CPUJS.TM.Shooter.lock = false;
+				},5);
 			}
 		},
 	//vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv任务处理部分vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
@@ -678,6 +752,7 @@ define(function(require,exports){
 				while(p.queue.length>0){//优先执行fastQueue里面的关键任务
 					o = p.queue.shift();
 					_a.push("fn:"+o.fn+"   time:"+o.time);
+					CPUJS.mark(o.time,"#F00","time:"+o.time+"\n\nfn:"+o.fn);
 				}
 				CPUJS.log(_a.join("\n"));
 			}
@@ -831,11 +906,13 @@ define(function(require,exports){
 	exports.Stat = CPUJS.Monitor.Stat;
 	exports.TurnOn = CPUJS.TurnOn;
 	exports.TurnOff = CPUJS.TurnOff;
+	exports.mark = CPUJS.mark;
 	/**
 	 * 环境配置
 	 */
 	CPUJS.setup = function(){
-		var pre = "cpujs_",url = location.href.toLowerCase(),k;
+		var pre = "cpujs_", url = location.href.toLowerCase(), k;
+
 		if(location.href.indexOf("cpujs_debugger")>-1){
 			CPUJS.TurnOn.Log = true;
 			CPUJS.TurnOn.Monitor = true;

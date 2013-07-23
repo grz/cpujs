@@ -51,6 +51,9 @@ define(['./cpu_monitor_ui'],function(require,exports){
 			}
 			return node.sheet || node;
 		},
+		/**
+		 * 从上一个点把线连到一个新的点（x,y）是这个点的坐标
+		 */
 		drawPoint:function(x,y,index){
 			var p = CPUJS.Monitor.UI,c = p.canvas,l;
 			if(typeof(index)!="undefined"&&p.Drawer.VMLItems[index]){
@@ -68,14 +71,21 @@ define(['./cpu_monitor_ui'],function(require,exports){
 			p.LAST_X = x;
 			p.LAST_Y = y;
 		},
-		drawline:function(){
+		/**
+		 * 一次性将所有的线给绘制出来，方便实现曲线的平移
+		 */
+		drawLine:function(){
 			var p = CPUJS.Monitor.UI,po;
 			for(var i=0,len=p.point_list.length;i<len;i++){
 				po = p.point_list[i];
 				p.Drawer.drawPoint(po[0],po[1],i);
 				po[0]-=p.STEP_WIDTH;
 			}
+			CPUJS.Monitor.UI.Mark.move();
 		},
+		/**
+		 * cpu曲线的百分比数字
+		 */
 		PercentNum:{
 			PANEL_WIDTH:50,
 			PANEL_HEIGHT:35,
@@ -131,7 +141,12 @@ define(['./cpu_monitor_ui'],function(require,exports){
 			}
 		}
 	};
-	CPUJS.Monitor.UI.Drawer.initCanvas();
+
+	CPUJS.Monitor.UI.bootstrap = function(){
+		CPUJS.Monitor.UI.init();
+		CPUJS.Monitor.UI.Drawer.initCanvas();
+	}
+	
 	return CPUJS.Monitor.UI;
 });
 

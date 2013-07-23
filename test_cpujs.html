@@ -1,0 +1,297 @@
+<!DOCTYPE HTML>
+<html lang="zh-cn" class="os_win7">
+ <head>
+  <title>CPUJS by GRZ</title>
+  <meta name="Generator" content="EditPlus">
+  <meta name="Author" content="">
+  <meta name="Keywords" content="">
+  <meta name="Description" content="">
+ </head>
+ <body style="background-color:#000">;
+<script type="text/javascript">
+<!--
+	window.CPU_DEBUGGER_TURN_ON = 1;
+//-->
+</script>
+ <script type="text/javascript" charset="utf-8" src="http://ctc.qzs.qq.com/ac/qzone/qzfl/qzfl_2.1.1.4.js"></script>
+<!--<script type="text/javascript" charset="utf-8" src="/v6/engine/cpu.js"></script>
+ <script type="text/javascript" charset="utf-8" src="/v6/engine/cpu_lite.js"></script>
+ <script type="text/javascript" charset="utf-8" src="/v6/engine/cpu_ui.js"></script> -->
+<script type="text/javascript" src="http://ctc.qzonestyle.gtimg.cn/ac/lib/jquery-1.9.1.js" ></script>
+<script type="text/javascript" src="http://ctc.qzonestyle.gtimg.cn/ac/qzone/qzfl/qzfl_2.1.31.js" ></script><script type="text/javascript" src="http://ctc.qzonestyle.gtimg.cn/ac/lib/seajs/sea-2.0.0.js" ></script>
+
+
+
+<h2 style="position:absolute;left:520px;top:0px;color:#0F0;">CPU:</h2>
+<input id="cpu4taskmanager_input" style="position:absolute;left:580px;top:14px;color:#0F0;font-size:26px;background-color:#000;width:60px;" value="" />
+<h2 style="position:absolute;left:720px;top:0px;color:#0F0;">Count:</h2>
+<input id="mission_count_input" style="position:absolute;left:810px;top:14px;color:#0F0;font-size:26px;background-color:#000;width:60px;" value="50" />
+<h2 style="position:absolute;left:920px;top:0px;color:#0F0;">Delay:</h2>
+<input id="monitor_delay_input" style="position:absolute;left:1040px;top:14px;color:#0F0;font-size:26px;background-color:#000;width:60px;" value="100" />
+
+
+<h2 style="position:absolute;left:10px;top:90px;color:#0F0;width:350px;text-align:center;cursor:pointer;" onclick="clickTitle(0);">TaskManager</h2>
+<div id="imgList0" style="position:absolute;width:340px;height:100%;left:10px;top:140px;line-height:4px;border:2px solid;"></div>
+<h2 style="position:absolute;left:360px;top:90px;color:#FFF;width:350px;text-align:center;cursor:pointer;" onclick="clickTitle(4);">RequestAfterAnimationFrame</h2>
+<div id="imgList4" style="position:absolute;width:340px;height:100%;left:360px;top:140px;line-height:4px;border:2px solid;"></div>
+<h2 style="position:absolute;left:710px;top:90px;color:#F00;width:350px;text-align:center;cursor:pointer;" onclick="clickTitle(1);">setTimeout(0)</h2>
+<div id="imgList1" style="position:absolute;width:340px;height:100%;left:710px;top:140px;line-height:4px;border:2px solid;"></div>
+<h2 style="position:absolute;left:1060px;top:90px;color:#ff9b0a;width:350px;text-align:center;cursor:pointer;" onclick="clickTitle(2);">normal</h2>
+<div id="imgList2" style="position:absolute;width:340px;height:100%;left:1060px;top:140px;line-height:4px;border:2px solid;"></div>
+<script type="text/javascript">
+//document.domain = "qq.com";
+<!--
+var require = seajs.use,siDomain="qzs.qq.com";
+$j = jQuery.noConflict();
+seajs.config({
+	"base":"http://" + siDomain + "/qzone/v8/",
+	charset:'utf-8',
+	timeout:5*60*1000,
+	debug:0,
+	alias:{
+		'photo.v7' : 'http://' + siDomain +'/qzone/photo/v7/js/',
+		'cssBase' : 'http://' + siDomain +'/'
+	},
+	map:[
+		[/^.+\/lib\/jquery\.js$/,'http://' + siDomain + '/ac/lib/jquery/1.8.3/jquery.js?max_age=2592000&t=20130304']
+	]
+});
+require(['engine/cpu'],function(cpu){
+		//cpu.Config.TM_MISSION_DELAY = 10;//单次运行超过10毫秒的任务要被Log出来
+		cpu.Config.TM_MAX_CPU =10;
+		cpu.bootstrap();	 
+		window.CPU = cpu;//全局的CPU调度器
+
+
+
+		(function() {
+		var lastTime = 0;
+		var vendors = ['ms', 'moz', 'webkit', 'o'];
+		for(var x = 0; x < vendors.length; x++) {
+			if(window[vendors[x]+'RequestAnimationFrame']){
+				window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+				window.cancelRequestAnimationFrame = window[vendors[x]+'CancelRequestAnimationFrame'];
+			}
+			
+		}
+
+    //window.webkitCancelRequestAnimationFrame
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function(callback, element) {
+		//debugger;
+            var currTime = new Date().getTime();
+            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+			
+            var id = window.setTimeout(function() { callback(currTime + timeToCall); }, 
+              timeToCall);
+            lastTime = currTime + timeToCall;
+			//console.log("#################:   "+timeToCall);
+            return id;
+        };
+     //console.log(window.requestAnimationFrame);
+    if (!window.cancelRequestAnimationFrame)
+        window.cancelRequestAnimationFrame = function(id) {
+            clearTimeout(id);
+        };
+}())
+
+CPUTest_MAX_COUNT  = 50;
+
+CPUTest = {
+	index:0,
+	isIframe:false,
+	_maxc:0,
+	_c:0,
+	init:function(type){
+		var p = CPUTest,
+		testCase = [
+			function(){
+				CPU.load(function(){
+					p.createIframe(type);
+				});
+				/*CPU.load(function(){
+					window.abc();
+				});*/
+			},
+			function(){
+				setTimeout(function(){
+					p.createIframe(type);
+				},0);
+			},
+			function(){
+				p.createIframe(type);
+			}
+		];
+		
+		var d = $("mission_count_input");
+		if(d){
+			CPUTest_MAX_COUNT = d.value;
+		}
+
+		var d = $("monitor_delay_input");
+		if(d){
+			CPU.Monitor.DELAY = d.value;
+		}
+		
+		function _makeItem(count,func){
+			if(count>0){
+				count--;
+				fn();
+				_makeItem(count);
+			}
+			
+		}
+
+		var c = p.isIframe?10:CPUTest_MAX_COUNT;
+		p._maxc = c;
+		if(type<3){
+			fn = testCase[type]||QZFL.emptyFn;
+			
+			//alert(c);
+			/*for(var i=c;i--;){
+			
+				fn();
+			}*/
+			_makeItem(c,fn);
+
+		}else{
+			CPUTest.testRequestAfterAnimationFrame(Date.now);
+		}
+	},
+	handle:null,
+	testRequestAfterAnimationFrame:function(){
+		var p = CPUTest;
+		 p.createIframe(4);
+		  //p.createIframe();
+		p.handle = window.requestAnimationFrame(CPUTest.testRequestAfterAnimationFrame);
+		p._c++;
+		//console.log("p._c:"+p._c+"   maxcount:"+CPUTest_MAX_COUNT);
+		if(p._c>=CPUTest_MAX_COUNT){
+			//alert("cancel");
+			window.cancelRequestAnimationFrame(p.handle);
+		}
+
+	},
+	createIframe:function(type){
+		var img = document.createElement("IMG"),id,s;
+		var sm = ['http://qlogo1.store.qq.com/qzone/1401756/1401756/50','http://qlogo4.store.qq.com/qzone/1085763915/1085763915/50','http://qlogo4.store.qq.com/qzone/123019007/123019007/50','http://qlogo4.store.qq.com/qzone/123019007/123019007/50','http://qlogo4.store.qq.com/qzone/79543015/79543015/50']
+		img.src = sm[type];//+Math.random();//http://qlogo2.store.qq.com/qzone/9611313/9611313/30';
+		//console.log( sm[type]+"   type:"+type);
+		img.style.cssText = "width:3px;height:3px;";
+		id = "imgList"+type;
+
+		var d = document.getElementById(id);
+		if(d){
+			d.appendChild(img);
+		}
+	}
+};
+
+
+setTimeout(function(){
+	CPUTest.init(0);	//taskManager
+	CPUTest.testRequestAfterAnimationFrame();//RequestAfterAnimationFrame
+	CPUTest.init(1);	//setTimeout(0)
+	CPUTest.init(2);	//normal
+},2000);
+
+
+
+
+(function(){
+	var d = $("cpu4taskmanager_input");
+	if(d){
+		d.value = CPU.Config.TM_MAX_CPU;
+	}
+})();
+
+function testT(){
+	//test setTimeout
+	var a1=[],a2=[],c=80,delay=50;
+	setTimeout(function(){
+		a1.push(new Date());
+		if(a1.length>=c){
+			logT(a1,"setTimeout:");
+			return;
+		}
+		setTimeout(arguments.callee,delay);
+	},delay);
+
+	window.TimerID = setInterval(function(){
+		a2.push(Date.now());
+		if(a2.length>=c){
+			clearInterval(window.TimerID);
+			logT(a2,"setInterval:");
+			return;
+		}
+	},delay);
+
+	function logT(a,s){
+	//debugger;
+		var _s = s+"";
+		for(var i=1,len=a.length;i<len;i++){
+			_s+="|"+(a[i]-a[i-1]);
+		}
+		console.log(_s);
+	}
+}
+
+function testLoadWithArgs(){
+	function a(a,b,c){
+		console.log("#########:"+Array.prototype.slice.call(arguments,0).join(","));
+	}
+	for(var i=0,len=5;i<len;i++){
+		CPU.load(a,i,i+1,i+2);
+	}
+
+}
+
+//testLoadWithArgs();
+
+
+
+
+
+});
+
+
+window.clickTitle = function(type){
+	clearContainer(type);
+	var d = $("mission_count_input");
+	if(d){
+		CPUTest_MAX_COUNT = d.value;
+	}
+	var d = $("monitor_delay_input");
+		if(d){
+			CPU.Monitor.DELAY = d.value;
+		}
+	setTimeout(function(){
+		if(type==4){
+			window.cancelRequestAnimationFrame(CPUTest.handle);
+			CPUTest._c = 0;
+			CPUTest.testRequestAfterAnimationFrame();//RequestAfterAnimationFrame
+		}else if(type==0){
+			var d = $("cpu4taskmanager_input");
+				if(d){
+					CPU.Config.TM_MAX_CPU = d.value ||40;
+				}
+				CPU.TM.reset();
+				CPUTest.init(type);//taskManager
+		}else{
+			CPUTest.init(type);	
+		}
+	},1000);
+	
+}
+
+function clearContainer(type){
+	var  id = 'imgList'+type;
+	var d = $(id);
+	if(d){
+		d.innerHTML = "";
+	}
+}
+</script>
+ </body>
+</html>
